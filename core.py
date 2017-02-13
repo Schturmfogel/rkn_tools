@@ -92,4 +92,21 @@ class Core(object):
 			return False
 
 	def send_request(self):
-		
+		logger.info('Sending request.')
+		request = self.session.send_request(self.cfg.XMLPathFName(), self.cfg.P7SPathFName())
+		logger.info('Checking request status.')
+		if request['result']:
+			self.code = request['code']
+			logger.info('Got code %s', self.code)
+			Dump.update(value=self.code).where(Dump.param == 'lastCode').execute()
+			Dump.update(value='sendRequest').where(Dump.param == 'lastAction').execute()
+			Dump.update(value='Code').where(Dump.param == 'lastResult').execute()
+			logger.info('Save code in History.')
+			History.create(requestCode=self.code, date=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+			self.code_id = History.get(History.requestCode == self.code).id
+			return self.code
+		else:
+			Dump.update(value='sendRequest').where(Dump.param == 'lastAction').execute()
+			Dump.update(value='Error').where(Dump.param == 'lastResult').execute()
+			logger.error(request['resultComment'])
+			return False
